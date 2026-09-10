@@ -6,13 +6,12 @@ const FILE_PASS := "AI_Yandex_v1_local_obfuscation"
 
 signal config_changed()
 
-var email: String = ""
-var oauth_token: String = ""
+var api_key: String = ""           # хранится зашифрованным
+var folder_id: String = ""         # ID каталога Yandex Cloud (опционально)
 var server_url: String = "http://127.0.0.1:8000"
 var godot_port: int = 9876
 var model: String = "yandexgpt-lite"
 var temperature: float = 0.6
-var remember_me: bool = true
 
 func load_config() -> void:
 	if not FileAccess.file_exists(CONFIG_PATH):
@@ -27,23 +26,21 @@ func load_config() -> void:
 	if typeof(parsed) != TYPE_DICTIONARY:
 		return
 	var d: Dictionary = parsed
-	email = str(d.get("email", ""))
-	oauth_token = str(d.get("oauth_token", ""))
+	api_key = str(d.get("api_key", ""))
+	folder_id = str(d.get("folder_id", ""))
 	server_url = str(d.get("server_url", server_url))
 	godot_port = int(d.get("godot_port", godot_port))
 	model = str(d.get("model", model))
 	temperature = float(d.get("temperature", temperature))
-	remember_me = bool(d.get("remember_me", remember_me))
 
 func save_config() -> void:
 	var d: Dictionary = {
-		"email": email,
-		"oauth_token": oauth_token if remember_me else "",
+		"api_key": api_key,
+		"folder_id": folder_id,
 		"server_url": server_url,
 		"godot_port": godot_port,
 		"model": model,
-		"temperature": temperature,
-		"remember_me": remember_me
+		"temperature": temperature
 	}
 	var txt: String = JSON.stringify(d)
 	var f: FileAccess = FileAccess.open_encrypted_with_pass(CONFIG_PATH, FileAccess.WRITE, FILE_PASS)
@@ -54,9 +51,9 @@ func save_config() -> void:
 	f.close()
 	config_changed.emit()
 
-func clear_token() -> void:
-	oauth_token = ""
+func clear_api_key() -> void:
+	api_key = ""
 	save_config()
 
-func has_token() -> bool:
-	return oauth_token != "" and email != ""
+func has_api_key() -> bool:
+	return api_key != "" and api_key.length() > 10
