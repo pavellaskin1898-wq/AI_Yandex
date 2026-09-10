@@ -94,27 +94,24 @@ func _stop_python_server() -> void:
 
 func _find_python_executable() -> String:
 	"""Ищет исполняемый файл Python в системе"""
-	var possible_names: PackedStringArray = ["python3", "python", "python3.10", "python3.11", "python3.12"]
+	var os_name = OS.get_name()
+	var candidates: PackedStringArray = []
 	
-	for name in possible_names:
-		var result: int = OS.execute("which", [name], [], true, true)
-		if result == 0:
-			return name
+	if os_name == "Windows":
+		candidates = ["python", "python3", "py"]
+	elif os_name == "macOS" or os_name == "Linux":
+		candidates = ["python3", "python"]
+	else:
+		candidates = ["python3", "python"]
 	
-	if OS.has_feature("windows"):
-		var win_paths: PackedStringArray = [
-			"C:\\Python39\\python.exe",
-			"C:\\Python310\\python.exe",
-			"C:\\Python311\\python.exe",
-			"C:\\Python312\\python.exe",
-			"C:\\Users\\%USERNAME%\\AppData\\Local\\Programs\\Python\\Python39\\python.exe",
-			"C:\\Users\\%USERNAME%\\AppData\\Local\\Programs\\Python\\Python310\\python.exe",
-			"C:\\Users\\%USERNAME%\\AppData\\Local\\Programs\\Python\\Python311\\python.exe",
-			"C:\\Users\\%USERNAME%\\AppData\\Local\\Programs\\Python\\Python312\\python.exe"
-		]
-		for path in win_paths:
-			var expanded_path: String = path.replace("%USERNAME%", OS.get_environment("USERNAME"))
-			if FileAccess.file_exists(expanded_path):
-				return expanded_path
+	for cmd in candidates:
+		# Пытаемся запустить команду с аргументом --version для проверки существования
+		# exit_code будет 0, если команда найдена и выполнилась успешно
+		var output: Array = []
+		var exit_code: int = OS.execute(cmd, ["--version"], output, true)
+		if exit_code == 0:
+			print("[AI_Yandex] Found Python executable: ", cmd)
+			return cmd
 	
+	print("[AI_Yandex] Error: Python executable not found in PATH.")
 	return ""
