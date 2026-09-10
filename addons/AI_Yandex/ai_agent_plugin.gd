@@ -75,7 +75,7 @@ func _start_python_server() -> void:
 		push_error("[AI_Yandex] Python server script not found at: " + script_path)
 		return
 	
-	var args: PackedStringArray = [python_path, script_path, "--host", "0.0.0.0", "--port", "8000"]
+	var args: PackedStringArray = [script_path, "--host", "0.0.0.0", "--port", "8000"]
 	_python_process_id = OS.execute(python_path, args, [], false)
 	
 	if _python_process_id != -1:
@@ -86,10 +86,28 @@ func _start_python_server() -> void:
 func _stop_python_server() -> void:
 	"""Останавливает Python сервер при выгрузке плагина"""
 	if _python_process_id != -1:
-		# Note: Godot 4.x doesn't have a direct way to kill a process by PID from GDScript
-		# The process will continue running, but this is acceptable for most use cases
-		# For proper cleanup, users should manually stop the server or use OS signals
-		print("[AI_Yandex] Python server (PID: %d) should be stopped manually if needed" % _python_process_id)
+		# В Godot 4.x нет прямого метода kill для PID, но мы можем попробовать завершить процесс
+		# через системные команды или просто сообщить пользователю
+		# Для Windows используем taskkill, для Linux/macOS - kill
+		var os_name = OS.get_name()
+		var kill_cmd: String = ""
+		var kill_args: PackedStringArray = []
+		
+		if os_name == "Windows":
+			kill_cmd = "taskkill"
+			kill_args = ["/F", "/PID", str(_python_process_id)]
+		elif os_name == "macOS" or os_name == "Linux":
+			kill_cmd = "kill"
+			kill_args = ["-9", str(_python_process_id)]
+		
+		if kill_cmd != "":
+			var output: Array = []
+			var exit_code: int = OS.execute(kill_cmd, kill_args, output, true)
+			if exit_code == 0:
+				print("[AI_Yandex] Python server (PID: %d) stopped successfully" % _python_process_id)
+			else:
+				print("[AI_Yandex] Python server (PID: %d) should be stopped manually if needed" % _python_process_id)
+		
 		_python_process_id = -1
 
 func _find_python_executable() -> String:

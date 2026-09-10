@@ -11,8 +11,11 @@ var _status_label: Label
 var _log_view: RichTextLabel
 var _prompt_field: TextEdit
 var _send_btn: Button
+var _stop_btn: Button
+var _processing_label: Label
 var _http_request: HTTPRequest
 var _code_request: HTTPRequest
+var _is_processing: bool = false
 
 func setup(config: RefCounted, http_server: Node) -> void:
 	_config = config
@@ -86,10 +89,28 @@ func _build_ui() -> void:
 	_prompt_field.placeholder_text = "Describe your game or code task..."
 	root.add_child(_prompt_field)
 
+	# Индикатор процесса
+	_processing_label = Label.new()
+	_processing_label.text = ""
+	_processing_label.visible = false
+	_processing_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	root.add_child(_processing_label)
+
+	# Контейнер для кнопок
+	var btn_container: HBoxContainer = HBoxContainer.new()
+	root.add_child(btn_container)
+
 	_send_btn = Button.new()
 	_send_btn.text = "Send to AI"
 	_send_btn.pressed.connect(Callable(self, "_on_send_pressed"))
-	root.add_child(_send_btn)
+	btn_container.add_child(_send_btn)
+	_send_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+
+	_stop_btn = Button.new()
+	_stop_btn.text = "🛑 Стоп"
+	_stop_btn.disabled = true
+	_stop_btn.pressed.connect(Callable(self, "_on_stop_pressed"))
+	btn_container.add_child(_stop_btn)
 
 func _refresh_connection_state() -> void:
 	if _config == null:
@@ -123,12 +144,19 @@ func _on_connect_pressed() -> void:
 	_append_log("[color=green]Connected with API Key[/color]")
 
 func _on_send_pressed() -> void:
+	if _is_processing:
+		return
+	
 	var prompt: String = _prompt_field.text.strip_edges()
 	if prompt == "":
 		return
 	if not _config.has_api_key():
 		_append_log("[color=red]Please connect first[/color]")
 		return
+	
+	_is_processing = true
+	_update_ui_state()
+	
 	_append_log("[b]You:[/b] %s" % prompt)
 	_prompt_field.text = ""
 	
@@ -158,8 +186,39 @@ func _on_send_pressed() -> void:
 	
 	if err != OK:
 		_append_log("[color=red]Failed to send request: %s[/color]" % error_string(err))
+		_reset_processing_state()
+
+func _on_stop_pressed() -> void:
+	if _http_request.get_http_client_status() != HTTPClient.STATUS_DISCONNECTED:
+		_http_request.cancel_request()
+		_append_log("[color=yellow]Request cancelled by user[/color]")
+		_reset_processing_state()
+
+func _reset_processing_state() -> void:
+	_is_processing = false
+	_update_ui_state()
+
+func _update_ui_state() -> void:
+	if _is_processing:
+		_processing_label.text = "⏳ Обработка запроса... Пожалуйста, подождите."
+		_processing_label.visible = true
+		_send_btn.disabled = true
+		_stop_btn.disabled = false
+		_prompt_field.editable = false
+	else:
+		_processing_label.text = ""
+		_processing_label.visible = false
+		_send_btn.disabled = false
+		_stop_btn.disabled = true
+		_prompt_field.editable = true
 
 func _on_request_completed(result: int, response_code: int, headers: PackedStringArray, body: PackedByteArray) -> void:
+	_reset_processing_state()
+	
+	if result != HTTPRequest.RESULT_SUCCESS:
+		_append_log("[color=red]Request failed with code: %d[/color]" % result)
+		return
+	
 	if response_code == 200:
 		var json = JSON.new()
 		var parse_err = json.parse(body.get_string_from_utf8())
