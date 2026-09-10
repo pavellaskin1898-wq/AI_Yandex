@@ -191,4 +191,17 @@ def extract_code_blocks(text: str) -> list:
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="127.0.0.1", port=8000)
+    import sys
+    
+    # Парсим аргументы командной строки для поддержки запуска из Godot
+    host = "127.0.0.1"
+    port = 8000
+    
+    for i, arg in enumerate(sys.argv):
+        if arg == "--host" and i + 1 < len(sys.argv):
+            host = sys.argv[i + 1]
+        elif arg == "--port" and i + 1 < len(sys.argv):
+            port = int(sys.argv[i + 1])
+    
+    print(f"[AI_Yandex Python Server] Starting on {host}:{port}")
+    uvicorn.run(app, host=host, port=port)

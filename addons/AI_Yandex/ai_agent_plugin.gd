@@ -75,7 +75,7 @@ func _start_python_server() -> void:
 		push_error("[AI_Yandex] Python server script not found at: " + script_path)
 		return
 	
-	var args: PackedStringArray = [python_path, script_path]
+	var args: PackedStringArray = [python_path, script_path, "--host", "0.0.0.0", "--port", "8000"]
 	_python_process_id = OS.execute(python_path, args, [], false)
 	
 	if _python_process_id != -1:
