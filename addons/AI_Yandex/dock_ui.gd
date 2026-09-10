@@ -12,6 +12,7 @@ var _log_view: RichTextLabel
 var _prompt_field: TextEdit
 var _send_btn: Button
 var _http_request: HTTPRequest
+var _code_request: HTTPRequest
 
 func setup(config: RefCounted, http_server: Node) -> void:
 	_config = config
@@ -23,8 +24,14 @@ func setup(config: RefCounted, http_server: Node) -> void:
 func _ready() -> void:
 	_build_ui()
 	_http_request = HTTPRequest.new()
+	_http_request.name = "ChatHTTPRequest"
 	add_child(_http_request)
 	_http_request.request_completed.connect(Callable(self, "_on_request_completed"))
+	
+	_code_request = HTTPRequest.new()
+	_code_request.name = "CodeHTTPRequest"
+	add_child(_code_request)
+	_code_request.request_completed.connect(Callable(self, "_on_code_request_completed"))
 
 func _build_ui() -> void:
 	if _api_key_field != null:
@@ -186,12 +193,18 @@ func _send_code_to_godot(code: String) -> void:
 		"Accept: application/json"
 	]
 	
-	_http_request.request(
+	_code_request.request(
 		"http://127.0.0.1:9876/execute",
 		headers,
 		HTTPClient.METHOD_POST,
 		json_body
 	)
+
+func _on_code_request_completed(result: int, response_code: int, headers: PackedStringArray, body: PackedByteArray) -> void:
+	if response_code == 200:
+		_append_log("[color=green]Code executed successfully[/color]")
+	else:
+		_append_log("[color=red]Code execution failed with code: %d[/color]" % response_code)
 
 func _on_code_received(code: String, file_path: String) -> void:
 	_append_log("[color=green]Received code[/color] (%d chars) for %s" % [code.length(), file_path])
