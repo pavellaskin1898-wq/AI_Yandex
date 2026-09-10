@@ -1,183 +1,125 @@
-# AI Yandex Agent - Godot Asset Library Information
+# AI Yandex Agent — Метаданные для Godot Asset Library
 
-## Основное
+## Основная информация
 
-**Название:** AI Yandex Agent  
-**Категория:** Editor Plugins  
-**Подкатегория:** Tools, AI Integration  
-**Версия:** 1.0.0  
-**Godot Version:** 4.6.3+  
-**License:** MIT  
-**Author:** AI Developer  
+| Поле | Значение |
+|------|----------|
+| **Название** | AI Yandex Agent |
+| **Версия** | 1.0.0 |
+| **Автор** | AI Developer |
+| **Лицензия** | MIT |
+| **Категория** | Tools |
+| **Godot версия** | 4.6+ |
 
 ## Описание
 
-AI Yandex Agent — это мощный плагин для Godot Engine, который интегрирует возможности искусственного интеллекта от Яндекса прямо в редактор игр. Плагин позволяет генерировать GDScript-код для создания игр с помощью YandexGPT на основе текстового описания.
+Интеллектуальный ассистент для разработки игр в Godot Engine на базе YandexGPT и Yandex Alice. Плагин предоставляет удобный чат-интерфейс прямо в редакторе, генерирует GDScript код, создаёт файлы проекта и помогает с разработкой.
 
-### Ключевые особенности
+### Ключевые возможности
 
-- 🤖 **ИИ-генерация кода** — Используйте YandexGPT для создания GDScript-кода по описанию
-- 🔐 **Авторизация Яндекс** — Вход через Yandex Passport (логин/пароль)
-- 🎮 **Автоматическое выполнение** — Сгенерированный код выполняется прямо в редакторе
-- 🖥️ **Интеграция в UI** — Удобная док-панель в интерфейсе редактора
-- 📝 **Логирование операций** — Полное отслеживание всех действий
-- 🌐 **HTTP-коммуникация** — Надёжная связь между Godot и Python-бэкендом
+- 🤖 ИИ-агент на YandexGPT для генерации кода и ответов на вопросы
+- 🔐 Авторизация через Яндекс с безопасным хранением токенов
+- 💬 Чат-интерфейс в док-панели редактора
+- 📁 Автоматическое создание скриптов и сцен
+- ⚙️ Гибкие настройки модели (temperature, max tokens)
+- 📊 Подробное логирование для отладки
 
-## Требования
-
-### Системные требования
-
-- **Godot Engine:** 4.6.3.stable.official или новее
-- **Python:** 3.9 или выше (для бэкенд-сервера)
-- **Интернет-соединение:** Обязательно (для работы с Yandex API)
-
-### Python-зависимости
-
-Плагин требует установки Python-сервера со следующими зависимостями:
+## Теги
 
 ```
-fastapi>=0.104.0
-uvicorn>=0.24.0
-aiohttp>=3.9.0
-pydantic>=2.5.0
-requests>=2.31.0
+ai, yandex, alice, gpt, assistant, codegen, tool, editor, plugin, llm, automation
 ```
-
-## Установка
-
-1. Скачайте плагин из Godot Asset Library
-2. Включите плагин в **Project → Project Settings → Plugins**
-3. Скопируйте папку `python_server` в удобное место
-4. Установите Python-зависимости: `pip install -r requirements.txt`
-5. Запустите Python-сервер: `python main.py`
-6. Введите учётные данные Яндекс в док-панели
-
-## Использование
-
-### Быстрый старт
-
-1. **Авторизация:** Введите логин и пароль Яндекс в док-панели
-2. **Ввод промта:** Опишите игру, которую хотите создать
-3. **Генерация:** Нажмите "Сгенерировать игру"
-4. **Результат:** Код будет создан и выполнен в редакторе
-
-### Примеры промтов
-
-- "Create a simple platformer with jumping and movement"
-- "Создай арканоид с ракеткой и мячом"
-- "Make a clicker game with upgrades"
-- "Сделай гоночную игру с препятствиями"
-
-## Технические детали
-
-### Архитектура
-
-```
-┌─────────────────┐     HTTP      ┌─────────────────┐
-│   Godot Editor  │◄─────────────►│  Python Server  │
-│                 │    (8765)     │                 │
-│  ┌───────────┐  │               │  ┌───────────┐  │
-│  │ Dock Panel│  │               │  │ FastAPI   │  │
-│  └───────────┘  │               │  └───────────┘  │
-│  ┌───────────┐  │               │  ┌───────────┐  │
-│  │ HTTP Srv  │  │◄─────────────►│  │ YandexGPT │  │
-│  └───────────┘  │    (8000)     │  └───────────┘  │
-└─────────────────┘     HTTP      └─────────────────┘
-```
-
-### API Endpoints
-
-#### Python Server (порт 8000)
-- `POST /auth` — Аутентификация пользователя
-- `POST /generate` — Генерация кода игры
-- `POST /code` — Отправка кода в Godot
-- `GET /status` — Статус сервера
-
-#### Godot HTTP Server (порт 8765)
-- `POST /execute` — Выполнение GDScript-кода
-- `POST /auth` — Уведомление об аутентификации
-- `GET /status` — Статус сервера
-
-## Известные ограничения
-
-⚠️ **Важно:** Этот плагин использует симулированную аутентификацию для демонстрационных целей. Для продакшена необходимо:
-
-1. Реализовать полную аутентификацию через Yandex Passport с CSRF-токенами
-2. Использовать OAuth2 flow вместо аутентификации по паролю
-3. Настроить правильное хранение IAM-токенов
-
-### Ограничения генерации кода
-
-- Качество кода зависит от формулировки промта
-- Не все жанры игр могут быть созданы автоматически
-- Может потребоваться ручная доработка кода
-- Требуется стабильное интернет-соединение
 
 ## Скриншоты
 
-### Док-панель
-*(Место для скриншота док-панели в редакторе Godot)*
+Рекомендуемые скриншоты для добавления:
 
-### Процесс генерации
-*(Место для скриншота процесса генерации кода)*
+1. **dock_panel.png** — Общий вид док-панели с вкладками
+2. **chat_interface.png** — Вкладка чата с примером диалога
+3. **auth_screen.png** — Вкладка авторизации
+4. **settings.png** — Вкладка настроек с параметрами модели
+5. **logs.png** — Вкладка логов
 
-### Результат
-*(Место для скриншота созданной игры)*
+*Примечание: Добавьте реальные скриншоты при публикации*
+
+## Совместимость
+
+| Godot версия | Статус |
+|--------------|--------|
+| 4.6.3.stable | ✅ Поддерживается |
+| 4.6.x | ✅ Ожидается совместимость |
+| 4.5.x | ❌ Не тестировалось |
+| 4.4 и ниже | ❌ Не поддерживается |
+
+## Требования
+
+### Клиентские
+- Godot Engine 4.6.3+
+- Доступ в интернет (для YandexGPT API)
+
+### Серверные (Python бэкенд)
+- Python 3.9+
+- FastAPI 0.104+
+- httpx 0.25+
+- uvicorn 0.24+
+
+## Установка
+
+1. Скачайте плагин из Asset Library
+2. Распакуйте в папку проекта `addons/AI_Yandex/`
+3. Включите в `Project Settings → Plugins`
+4. Установите и запустите Python бэкенд (см. README.md)
+
+## Ссылки
+
+- **Репозиторий**: https://github.com/your-username/ai-yandex-godot-plugin
+- **Документация**: https://github.com/your-username/ai-yandex-godot-plugin/blob/main/README.md
+- **Issues**: https://github.com/your-username/ai-yandex-godot-plugin/issues
+- **YandexGPT API**: https://cloud.yandex.ru/docs/yandexgpt/
 
 ## История версий
 
 ### 1.0.0 (Первый релиз)
+- Базовая интеграция с YandexGPT
+- Авторизация по логину/паролю
+- Чат-интерфейс в редакторе
+- Генерация GDScript кода
+- Создание файлов проекта
+- Настройки модели и температуры
+- Логирование запросов
 
-- ✅ Базовая интеграция с YandexGPT
-- ✅ Авторизация через Яндекс
-- ✅ Генерация GDScript-кода
-- ✅ HTTP-сервер для коммуникации
-- ✅ Док-панель в редакторе
-- ✅ Логирование операций
+## Иконка
 
-## Поддержка
+Рекомендуемая иконка: стилизованная буква "Я" (Яндекс) в сочетании с иконкой робота/ИИ.
 
-### Контакты
+Форматы:
+- `icon.svg` — векторная иконка (рекомендуется)
+- `icon_128x128.png` — растровая иконка
 
-- **Email:** support@example.com (замените на ваш)
-- **GitHub:** https://github.com/yourusername/ai-yandex-godot (замените на ваш)
-- **Документация:** См. README.md в репозитории
+## Классы API
 
-### Сообщение о проблемах
+Плагин предоставляет следующие классы для программного доступа:
 
-При возникновении проблем:
-1. Проверьте логи в док-панели
-2. Убедитесь, что Python-сервер запущен
-3. Проверьте подключение к интернету
-4. Убедитесь, что порты 8000 и 8765 свободны
+- `YandexConfig` — Менеджер конфигурации
+- `AIHttpServer` — HTTP сервер для связи с Python
+- `YandexClient` — HTTP клиент к Python бэкенду
+- `AIDockUI` — UI компонент док-панели
 
-## Лицензия
+## Известные ограничения
 
-MIT License
+- Требуется аккаунт Яндекс для авторизации
+- Python бэкенд должен быть запущен отдельно
+- Для работы YandexGPT требуется доступ к Yandex Cloud API
+- Двухфакторная аутентификация требует использования App Password
 
-Copyright (c) 2024 AI Developer
+## Планы развития
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+- [ ] Поддержка стриминга ответов
+- [ ] Интеграция с Alice Dialogs API
+- [ ] Шаблоны проектов игр
+- [ ] Локальное кеширование ответов
+- [ ] Поддержка других LLM провайдеров
 
 ---
 
-**Ключевые слова:** AI, Yandex, GPT, Code Generation, Tool, Editor Plugin, Automation, Machine Learning
-
-**Repository URL:** https://github.com/yourusername/ai-yandex-godot (замените на ваш)  
-**Documentation URL:** https://github.com/yourusername/ai-yandex-godot/blob/main/README.md (замените на ваш)
+**Дата обновления метаданных**: 2024

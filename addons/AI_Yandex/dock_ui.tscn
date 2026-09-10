@@ -1,95 +1,276 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<root type="module">
-<node name="DockUI" type="Control">
-	<property name="layout_mode">3</property>
-	<property name="anchors_preset">15</property>
-	<property name="anchor_right">1</property>
-	<property name="anchor_bottom">1</property>
-	<property name="grow_horizontal">2</property>
-	<property name="grow_vertical">2</property>
-	<node name="VBoxContainer" type="VBoxContainer">
-		<property name="layout_mode">1</property>
-		<property name="theme_override_constants/separation">10</property>
-		<node name="TitleLabel" type="Label">
-			<property name="layout_mode">2</property>
-			<property name="text">AI Yandex Agent</property>
-			<property name="horizontal_alignment">1</property>
-		</node>
-		<node name="HSeparator1" type="HSeparator">
-			<property name="layout_mode">2</property>
-		</node>
-		<node name="AuthVBox" type="VBoxContainer">
-			<property name="layout_mode">2</property>
-			<property name="theme_override_constants/separation">5</property>
-			<node name="LoginLabel" type="Label">
-				<property name="layout_mode">2</property>
-				<property name="text">Yandex Login</property>
-			</node>
-			<node name="LoginLineEdit" type="LineEdit">
-				<property name="layout_mode">2</property>
-				<property name="placeholder_text">Enter your Yandex login</property>
-			</node>
-			<node name="PasswordLabel" type="Label">
-				<property name="layout_mode">2</property>
-				<property name="text">Password</property>
-			</node>
-			<node name="PasswordLineEdit" type="LineEdit">
-				<property name="layout_mode">2</property>
-				<property name="secret">true</property>
-				<property name="placeholder_text">Enter your Yandex password</property>
-			</node>
-			<node name="LoginButton" type="Button">
-				<property name="layout_mode">2</property>
-				<property name="text">Войти</property>
-			</node>
-			<node name="StatusLabel" type="Label">
-				<property name="layout_mode">2</property>
-				<property name="text">Not logged in</property>
-				<property name="horizontal_alignment">1</property>
-			</node>
-		</node>
-		<node name="HSeparator2" type="HSeparator">
-			<property name="layout_mode">2</property>
-		</node>
-		<node name="ActionsVBox" type="VBoxContainer">
-			<property name="layout_mode">2</property>
-			<property name="theme_override_constants/separation">5</property>
-			<node name="PromptLabel" type="Label">
-				<property name="layout_mode">2</property>
-				<property name="text">Game Generation Prompt</property>
-			</node>
-			<node name="PromptTextEdit" type="TextEdit">
-				<property name="layout_mode">2</property>
-				<property name="custom_minimum_size">0 80</property>
-				<property name="text">Create a simple platformer game with a player character that can jump and move left/right</property>
-				<property name="wrap_enabled">true</property>
-			</node>
-			<node name="GenerateButton" type="Button">
-				<property name="layout_mode">2</property>
-				<property name="text">Сгенерировать игру</property>
-			</node>
-			<node name="ExecuteCodeButton" type="Button">
-				<property name="layout_mode">2</property>
-				<property name="text">Выполнить код</property>
-			</node>
-		</node>
-		<node name="HSeparator3" type="HSeparator">
-			<property name="layout_mode">2</property>
-		</node>
-		<node name="LogLabel" type="Label">
-			<property name="layout_mode">2</property>
-			<property name="text">Logs &amp; Output</property>
-		</node>
-		<node name="LogTextEdit" type="TextEdit">
-			<property name="layout_mode">1</property>
-			<property name="size_flags_vertical">3</property>
-			<property name="editable">false</property>
-			<property name="text"></property>
-		</node>
-		<node name="ClearLogButton" type="Button">
-			<property name="layout_mode">2</property>
-			<property name="text">Clear Log</property>
-		</node>
-	</node>
-</node>
-</root>
+[gd_scene load_steps=2 format=3 uid="uid://ai_yandex_dock_ui"]
+
+[ext_resource type="Script" path="res://addons/AI_Yandex/dock_ui.gd" id="1_dock"]
+
+[node name="DockUI" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_dock")
+
+[node name="VBoxContainer" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 8
+
+[node name="TabContainer" type="TabContainer" parent="VBoxContainer"]
+layout_mode = 2
+theme_override_constants/tab_alignment = 0
+tabs_visible = true
+theme_override_font_sizes/font_size = 14
+
+[node name="Agent" type="Control" parent="VBoxContainer/TabContainer"]
+layout_mode = 2
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="VBoxContainer/TabContainer/Agent"]
+layout_mode = 2
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="ChatLog" type="RichTextLabel" parent="VBoxContainer/TabContainer/Agent/VBoxContainer"]
+custom_minimum_size = Vector2(0, 200)
+layout_mode = 2
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+scroll_active = true
+bbcode_enabled = true
+text = "[color=#888888]Добро пожаловать в AI Yandex Agent![/color]"
+fit_content = false
+autowrap_mode = 2
+
+[node name="PromptContainer" type="VBoxContainer" parent="VBoxContainer/TabContainer/Agent/VBoxContainer"]
+layout_mode = 2
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="PromptEdit" type="TextEdit" parent="VBoxContainer/TabContainer/Agent/VBoxContainer/PromptContainer"]
+custom_minimum_size = Vector2(0, 60)
+layout_mode = 2
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+placeholder_text = "Введите задачу для генерации кода..."
+
+[node name="ButtonContainer" type="HBoxContainer" parent="VBoxContainer/TabContainer/Agent/VBoxContainer/PromptContainer"]
+layout_mode = 2
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="SendButton" type="Button" parent="VBoxContainer/TabContainer/Agent/VBoxContainer/PromptContainer/ButtonContainer"]
+layout_mode = 2
+text = "Отправить"
+
+[node name="GenerateGameButton" type="Button" parent="VBoxContainer/TabContainer/Agent/VBoxContainer/PromptContainer/ButtonContainer"]
+layout_mode = 2
+text = "Сгенерировать игру"
+
+[node name="ClearButton" type="Button" parent="VBoxContainer/TabContainer/Agent/VBoxContainer/PromptContainer/ButtonContainer"]
+layout_mode = 2
+text = "Очистить"
+
+[node name="Auth" type="Control" parent="VBoxContainer/TabContainer"]
+layout_mode = 2
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="VBoxContainer/TabContainer/Auth"]
+layout_mode = 2
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="EmailLabel" type="Label" parent="VBoxContainer/TabContainer/Auth/VBoxContainer"]
+layout_mode = 2
+text = "Email Яндекса:"
+
+[node name="EmailEdit" type="LineEdit" parent="VBoxContainer/TabContainer/Auth/VBoxContainer"]
+layout_mode = 2
+placeholder_text = "your-email@yandex.ru"
+
+[node name="PasswordLabel" type="Label" parent="VBoxContainer/TabContainer/Auth/VBoxContainer"]
+layout_mode = 2
+text = "Пароль:"
+
+[node name="PasswordEdit" type="LineEdit" parent="VBoxContainer/TabContainer/Auth/VBoxContainer"]
+layout_mode = 2
+secret = true
+placeholder_text = "Ваш пароль"
+
+[node name="RememberCheckbox" type="CheckBox" parent="VBoxContainer/TabContainer/Auth/VBoxContainer"]
+layout_mode = 2
+text = "Запомнить токен (не пароль)"
+button_pressed = true
+
+[node name="LoginButton" type="Button" parent="VBoxContainer/TabContainer/Auth/VBoxContainer"]
+layout_mode = 2
+text = "Войти"
+
+[node name="LogoutButton" type="Button" parent="VBoxContainer/TabContainer/Auth/VBoxContainer"]
+layout_mode = 2
+visible = false
+text = "Выйти"
+
+[node name="StatusMessage" type="Label" parent="VBoxContainer/TabContainer/Auth/VBoxContainer"]
+layout_mode = 2
+text = ""
+
+[node name="Settings" type="Control" parent="VBoxContainer/TabContainer"]
+layout_mode = 2
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="GridContainer" type="GridContainer" parent="VBoxContainer/TabContainer/Settings"]
+layout_mode = 2
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+columns = 2
+
+[node name="PythonURLLabel" type="Label" parent="VBoxContainer/TabContainer/Settings/GridContainer"]
+layout_mode = 2
+text = "Python URL:"
+
+[node name="URLEdit" type="LineEdit" parent="VBoxContainer/TabContainer/Settings/GridContainer"]
+layout_mode = 2
+text = "http://127.0.0.1"
+
+[node name="PythonPortLabel" type="Label" parent="VBoxContainer/TabContainer/Settings/GridContainer"]
+layout_mode = 2
+text = "Python порт:"
+
+[node name="PythonPortEdit" type="SpinBox" parent="VBoxContainer/TabContainer/Settings/GridContainer"]
+layout_mode = 2
+value = 8000
+min_value = 1
+max_value = 65535
+
+[node name="GodotPortLabel" type="Label" parent="VBoxContainer/TabContainer/Settings/GridContainer"]
+layout_mode = 2
+text = "Godot порт:"
+
+[node name="GodotPortEdit" type="SpinBox" parent="VBoxContainer/TabContainer/Settings/GridContainer"]
+layout_mode = 2
+value = 9876
+min_value = 1
+max_value = 65535
+
+[node name="ModelLabel" type="Label" parent="VBoxContainer/TabContainer/Settings/GridContainer"]
+layout_mode = 2
+text = "Модель:"
+
+[node name="ModelOptionButton" type="OptionButton" parent="VBoxContainer/TabContainer/Settings/GridContainer"]
+layout_mode = 2
+
+[node name="TemperatureLabel" type="Label" parent="VBoxContainer/TabContainer/Settings/GridContainer"]
+layout_mode = 2
+text = "Temperature:"
+
+[node name="TemperatureEdit" type="SpinBox" parent="VBoxContainer/TabContainer/Settings/GridContainer"]
+layout_mode = 2
+value = 7
+min_value = 0
+max_value = 20
+step = 1
+
+[node name="MaxTokensLabel" type="Label" parent="VBoxContainer/TabContainer/Settings/GridContainer"]
+layout_mode = 2
+text = "Max токенов:"
+
+[node name="MaxTokensEdit" type="SpinBox" parent="VBoxContainer/TabContainer/Settings/GridContainer"]
+layout_mode = 2
+value = 2000
+min_value = 100
+max_value = 8000
+step = 100
+
+[node name="SaveButton" type="Button" parent="VBoxContainer/TabContainer/Settings/GridContainer"]
+layout_mode = 2
+text = "Сохранить"
+
+[node name="Logs" type="Control" parent="VBoxContainer/TabContainer"]
+layout_mode = 2
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="VBoxContainer/TabContainer/Logs"]
+layout_mode = 2
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="LogText" type="TextEdit" parent="VBoxContainer/TabContainer/Logs/VBoxContainer"]
+layout_mode = 2
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+editable = false
+multiline = true
+scroll_active = true
+
+[node name="ClearLogButton" type="Button" parent="VBoxContainer/TabContainer/Logs/VBoxContainer"]
+layout_mode = 2
+text = "Очистить логи"
+
+[node name="StatusBar" type="HBoxContainer" parent="VBoxContainer"]
+layout_mode = 2
+
+[node name="StatusLabel" type="Label" parent="StatusBar"]
+layout_mode = 2
+text = "Статус: "
+
+[node name="ConnectionIndicator" type="ColorRect" parent="StatusBar"]
+custom_minimum_size = Vector2(12, 12)
+layout_mode = 2
+color = Color(1, 0, 0, 1)
+
+[node name="ConnectionLabel" type="Label" parent="StatusBar"]
+layout_mode = 2
+text = "Не подключено"
+
+[node name="UserLabel" type="Label" parent="StatusBar"]
+layout_mode = 2
+horizontal_alignment = 2
+text = ""

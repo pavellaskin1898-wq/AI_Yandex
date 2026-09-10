@@ -1,16 +1,4 @@
 ```
-# Dependencies
-python_server/venv/
-python_server/__pycache__/
-
-# Godot specific
-.addons/
-.import/
-.project
-.scn
-.res
-.gd
-
 # Python
 __pycache__/
 *.pyc
@@ -19,20 +7,31 @@ __pycache__/
 .Python
 env/
 venv/
-ENV/
 .venv/
-env.bak/
-venv.bak/
-
-# Logs
+.ENV
+.ENV.local
+.env
+.env.local
+.env.*
+.python-version
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
 *.log
-
-# OS generated files
+*.tmp
+*.swp
+*~
 .DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
 Thumbs.db
+
+# Godot
+.godot/
+*.import
+export_presets.cfg
 ```
