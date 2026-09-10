@@ -11,6 +11,7 @@ var _status_label: Label
 var _log_view: RichTextLabel
 var _prompt_field: TextEdit
 var _send_btn: Button
+var _http_request: HTTPRequest
 
 func setup(config: RefCounted, http_server: Node) -> void:
 	_config = config
@@ -21,6 +22,9 @@ func setup(config: RefCounted, http_server: Node) -> void:
 
 func _ready() -> void:
 	_build_ui()
+	_http_request = HTTPRequest.new()
+	add_child(_http_request)
+	_http_request.request_completed.connect(Callable(self, "_on_request_completed"))
 
 func _build_ui() -> void:
 	if _api_key_field != null:
@@ -120,6 +124,74 @@ func _on_send_pressed() -> void:
 		return
 	_append_log("[b]You:[/b] %s" % prompt)
 	_prompt_field.text = ""
+	
+	# Отправляем запрос на Python сервер
+	var api_key: String = _config.api_key
+	var folder_id: String = _config.folder_id
+	
+	var json_body = JSON.stringify({
+		"prompt": prompt,
+		"api_key": api_key,
+		"folder_id": folder_id,
+		"model": "yandexgpt-lite",
+		"temperature": 0.6
+	})
+	
+	var headers: PackedStringArray = [
+		"Content-Type: application/json",
+		"Accept: application/json"
+	]
+	
+	var err: Error = _http_request.request(
+		"http://127.0.0.1:8000/chat",
+		headers,
+		HTTPClient.METHOD_POST,
+		json_body
+	)
+	
+	if err != OK:
+		_append_log("[color=red]Failed to send request: %s[/color]" % error_string(err))
+
+func _on_request_completed(result: int, response_code: int, headers: PackedStringArray, body: PackedByteArray) -> void:
+	if response_code == 200:
+		var json = JSON.new()
+		var parse_err = json.parse(body.get_string_from_utf8())
+		if parse_err == OK:
+			var data = json.data
+			if data is Dictionary and data.has("response"):
+				_append_log("[color=green]AI Response:[/color] %s" % str(data["response"]))
+				
+				# Если есть код, отправляем его в Godot
+				if data.has("code_blocks") and data["code_blocks"].size() > 0:
+					for code_block in data["code_blocks"]:
+						_append_log("[color=cyan]Executing code...[/color]")
+						# Отправляем код на локальный HTTP сервер Godot для выполнения
+						_send_code_to_godot(code_block)
+			else:
+				_append_log("[color=yellow]Invalid response format[/color]")
+		else:
+			_append_log("[color=red]JSON parse error: %s[/color]" % json.get_error_message())
+	else:
+		_append_log("[color=red]Request failed with code: %d[/color]" % response_code)
+
+func _send_code_to_godot(code: String) -> void:
+	# Отправляем код на встроенный HTTP сервер Godot (порт 9876)
+	var json_body = JSON.stringify({
+		"code": code,
+		"file_path": "res://generated_script.gd"
+	})
+	
+	var headers: PackedStringArray = [
+		"Content-Type: application/json",
+		"Accept: application/json"
+	]
+	
+	_http_request.request(
+		"http://127.0.0.1:9876/execute",
+		headers,
+		HTTPClient.METHOD_POST,
+		json_body
+	)
 
 func _on_code_received(code: String, file_path: String) -> void:
 	_append_log("[color=green]Received code[/color] (%d chars) for %s" % [code.length(), file_path])
