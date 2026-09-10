@@ -1,0 +1,38 @@
+```
+# Dependencies
+python_server/venv/
+python_server/__pycache__/
+
+# Godot specific
+.addons/
+.import/
+.project
+.scn
+.res
+.gd
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+ENV/
+.venv/
+env.bak/
+venv.bak/
+
+# Logs
+*.log
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+```

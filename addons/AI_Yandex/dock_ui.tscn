@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<root type="module">
+<node name="DockUI" type="Control">
+	<property name="layout_mode">3</property>
+	<property name="anchors_preset">15</property>
+	<property name="anchor_right">1</property>
+	<property name="anchor_bottom">1</property>
+	<property name="grow_horizontal">2</property>
+	<property name="grow_vertical">2</property>
+	<node name="VBoxContainer" type="VBoxContainer">
+		<property name="layout_mode">1</property>
+		<property name="theme_override_constants/separation">10</property>
+		<node name="TitleLabel" type="Label">
+			<property name="layout_mode">2</property>
+			<property name="text">AI Yandex Agent</property>
+			<property name="horizontal_alignment">1</property>
+		</node>
+		<node name="HSeparator1" type="HSeparator">
+			<property name="layout_mode">2</property>
+		</node>
+		<node name="AuthVBox" type="VBoxContainer">
+			<property name="layout_mode">2</property>
+			<property name="theme_override_constants/separation">5</property>
+			<node name="LoginLabel" type="Label">
+				<property name="layout_mode">2</property>
+				<property name="text">Yandex Login</property>
+			</node>
+			<node name="LoginLineEdit" type="LineEdit">
+				<property name="layout_mode">2</property>
+				<property name="placeholder_text">Enter your Yandex login</property>
+			</node>
+			<node name="PasswordLabel" type="Label">
+				<property name="layout_mode">2</property>
+				<property name="text">Password</property>
+			</node>
+			<node name="PasswordLineEdit" type="LineEdit">
+				<property name="layout_mode">2</property>
+				<property name="secret">true</property>
+				<property name="placeholder_text">Enter your Yandex password</property>
+			</node>
+			<node name="LoginButton" type="Button">
+				<property name="layout_mode">2</property>
+				<property name="text">Войти</property>
+			</node>
+			<node name="StatusLabel" type="Label">
+				<property name="layout_mode">2</property>
+				<property name="text">Not logged in</property>
+				<property name="horizontal_alignment">1</property>
+			</node>
+		</node>
+		<node name="HSeparator2" type="HSeparator">
+			<property name="layout_mode">2</property>
+		</node>
+		<node name="ActionsVBox" type="VBoxContainer">
+			<property name="layout_mode">2</property>
+			<property name="theme_override_constants/separation">5</property>
+			<node name="PromptLabel" type="Label">
+				<property name="layout_mode">2</property>
+				<property name="text">Game Generation Prompt</property>
+			</node>
+			<node name="PromptTextEdit" type="TextEdit">
+				<property name="layout_mode">2</property>
+				<property name="custom_minimum_size">0 80</property>
+				<property name="text">Create a simple platformer game with a player character that can jump and move left/right</property>
+				<property name="wrap_enabled">true</property>
+			</node>
+			<node name="GenerateButton" type="Button">
+				<property name="layout_mode">2</property>
+				<property name="text">Сгенерировать игру</property>
+			</node>
+			<node name="ExecuteCodeButton" type="Button">
+				<property name="layout_mode">2</property>
+				<property name="text">Выполнить код</property>
+			</node>
+		</node>
+		<node name="HSeparator3" type="HSeparator">
+			<property name="layout_mode">2</property>
+		</node>
+		<node name="LogLabel" type="Label">
+			<property name="layout_mode">2</property>
+			<property name="text">Logs &amp; Output</property>
+		</node>
+		<node name="LogTextEdit" type="TextEdit">
+			<property name="layout_mode">1</property>
+			<property name="size_flags_vertical">3</property>
+			<property name="editable">false</property>
+			<property name="text"></property>
+		</node>
+		<node name="ClearLogButton" type="Button">
+			<property name="layout_mode">2</property>
+			<property name="text">Clear Log</property>
+		</node>
+	</node>
+</node>
+</root>
