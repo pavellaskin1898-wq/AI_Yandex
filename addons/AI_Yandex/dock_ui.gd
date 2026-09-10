@@ -216,7 +216,11 @@ func _on_request_completed(result: int, response_code: int, headers: PackedStrin
 	_reset_processing_state()
 	
 	if result != HTTPRequest.RESULT_SUCCESS:
-		_append_log("[color=red]Request failed with code: %d[/color]" % result)
+		var error_msg := "Request failed with code: %d" % result
+		if body.size() > 0:
+			var error_body := body.get_string_from_utf8()
+			error_msg += " | Server response: " + error_body
+		_append_log("[color=red]%s[/color]" % error_msg)
 		return
 	
 	if response_code == 200:
@@ -238,7 +242,11 @@ func _on_request_completed(result: int, response_code: int, headers: PackedStrin
 		else:
 			_append_log("[color=red]JSON parse error: %s[/color]" % json.get_error_message())
 	else:
-		_append_log("[color=red]Request failed with code: %d[/color]" % response_code)
+		var error_detail := "HTTP Error: %d" % response_code
+		if body.size() > 0:
+			var error_body := body.get_string_from_utf8()
+			error_detail += " | " + error_body
+		_append_log("[color=red]%s[/color]" % error_detail)
 
 func _send_code_to_godot(code: String) -> void:
 	# Отправляем код на встроенный HTTP сервер Godot (порт 9876)
