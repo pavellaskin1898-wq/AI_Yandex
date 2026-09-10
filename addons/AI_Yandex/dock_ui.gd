@@ -183,17 +183,17 @@ func _refresh_connection_state() -> void:
 	if _config.has_api_key():
 		_status_label.text = "Connected ✓"
 
-	_api_key_field.text = _config.api_key
-	_folder_id_field.text = _config.folder_id
+		_api_key_field.text = _config.api_key
+		_folder_id_field.text = _config.folder_id
 
-	_connect_btn.text = "Disconnect"
+		_connect_btn.text = "Disconnect"
 	else:
 		_status_label.text = "Not connected"
 
-	_api_key_field.text = ""
-	_folder_id_field.text = ""
+		_api_key_field.text = ""
+		_folder_id_field.text = ""
 
-	_connect_btn.text = "Connect"
+		_connect_btn.text = "Connect"
 
 
 func _on_connect_pressed() -> void:
