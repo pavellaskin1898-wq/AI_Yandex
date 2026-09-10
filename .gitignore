@@ -1,0 +1,46 @@
+```
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+.venv*/
+.ENV
+.env
+.env.*
+.env.local
+.python-version
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.log
+.pytest_cache/
+.mypy_cache/
+.hypothesis/
+
+# Godot
+*.import
+*.uid
+export_presets.cfg
+.godot/
+.GodotTools/
+GodotSharp/
+mono_crash.*
+
+# Dependencies
+node_modules/
+target/
+.gradle/
+build/
+dist/
+```
