@@ -1,234 +1,135 @@
 # ===== addons/AI_Yandex/http_server.gd =====
 @tool
 extends Node
-class_name AIHttpServer
 
-signal request_received(method: String, path: String, body: Dictionary)
-
-const DEFAULT_PORT := 9876
+signal code_received(code: String, file_path: String)
 
 var tcp_server: TCPServer = null
-var port: int = DEFAULT_PORT
+var port: int = 9876
 var is_running: bool = false
-var _clients: Array[StreamPeerTCP] = []
+var _clients: Array[Dictionary] = []
 var _buffers: Dictionary = {}
 
-var editor_interface: EditorInterface = null
+func start(server_port: int = 9876) -> Error:
+if is_running:
+push_warning("[AI_Yandex] HTTP server already running")
+return OK
 
-func _ready():
-	editor_interface = Engine.get_singleton("EditorInterface")
+port = server_port
+tcp_server = TCPServer.new()
+var err: Error = tcp_server.listen(port, "127.0.0.1")
+if err != OK:
+push_error("[AI_Yandex] Failed to start HTTP server on port %d: %s" % [port, error_string(err)])
+tcp_server = null
+return err
 
-func start(server_port: int = DEFAULT_PORT) -> Error:
-	if is_running:
-		push_warning("AIHttpServer already running")
-		return OK
-	
-	port = server_port
-	tcp_server = TCPServer.new()
-	var err = tcp_server.listen(port, "127.0.0.1")
-	if err != OK:
-		push_error("Failed to start HTTP server on port %d: %s" % [port, error_string(err)])
-		return err
-	
-	is_running = true
-	print("[AI Yandex] HTTP server started on 127.0.0.1:%d" % port)
-	return OK
+is_running = true
+print("[AI_Yandex] HTTP server started on 127.0.0.1:%d" % port)
+return OK
 
-func stop():
-	is_running = false
-	for client in _clients:
-		client.disconnect_from_host()
-	_clients.clear()
-	_buffers.clear()
-	if tcp_server:
-		tcp_server.stop()
-		tcp_server = null
-	print("[AI Yandex] HTTP server stopped")
+func stop() -> void:
+for c in _clients:
+var peer: StreamPeerTCP = c.get("peer", null)
+if peer != null:
+peer.disconnect_from_host()
+_clients.clear()
+_buffers.clear()
+if tcp_server != null:
+tcp_server.stop()
+tcp_server = null
+is_running = false
+print("[AI_Yandex] HTTP server stopped")
 
-func _exit_tree():
-	stop()
+func _exit_tree() -> void:
+stop()
 
-func _process(_delta: float):
-	if not is_running or tcp_server == null:
-		return
-	
-	# Принимаем новые подключения
-	if tcp_server.is_connection_available():
-		var client: StreamPeerTCP = tcp_server.take_connection()
-		if client:
-			client.set_no_delay(true)
-			_clients.append(client)
-			_buffers[client] = PackedByteArray()
-	
-	# Обрабатываем существующие подключения
-	var clients_to_remove: Array[StreamPeerTCP] = []
-	for client in _clients:
-		var status = client.get_status()
-		if status == StreamPeerTCP.STATUS_NONE or status == StreamPeerTCP.STATUS_ERROR:
-			clients_to_remove.append(client)
-			continue
-		
-		# Читаем данные
-		var available = client.get_available_bytes()
-		if available > 0:
-			var data = client.get_data(available)
-			if data[0] == OK and data[1].size() > 0:
-				_buffers[client] += data[1]
-				
-				# Проверяем полный HTTP запрос (двойной CRLF)
-				var buffer = _buffers[client]
-				var buffer_str = buffer.get_string_from_utf8()
-				if "\r\n\r\n" in buffer_str:
-					_parse_request(client, buffer_str)
-					_buffers[client] = PackedByteArray()
-		
-		# Проверяем завершение соединения
-		if status == StreamPeerTCP.STATUS_NONE:
-			clients_to_remove.append(client)
-	
-	# Удаляем отключённых клиентов
-	for client in clients_to_remove:
-		if _buffers.has(client):
-			_buffers.erase(client)
-		client.disconnect_from_host()
-		_clients.erase(client)
+func _process(_delta: float) -> void:
+if not is_running or tcp_server == null:
+return
 
-func _parse_request(client: StreamPeerTCP, raw_request: String):
-	var lines = raw_request.split("\r\n")
-	if lines.is_empty():
-		return
-	
-	# Парсим первую строку: METHOD /path HTTP/1.1
-	var first_line = lines[0].split(" ")
-	if first_line.size() < 2:
-		return
-	
-	var method = first_line[0]
-	var path = first_line[1]
-	
-	# Находим заголовок Content-Length
-	var content_length = 0
-	var body_start = -1
-	for i in range(1, lines.size()):
-		var line = lines[i]
-		if line.is_empty():
-			body_start = i + 1
-			break
-		if line.begins_with("Content-Length:"):
-			content_length = int(line.split(":")[1].strip_edges())
-	
-	# Извлекаем тело
-	var body_str = ""
-	if body_start > 0 and content_length > 0:
-		var body_lines = lines.slice(body_start)
-		body_str = "\r\n".join(body_lines)
-	
-	# Парсим JSON тело
-	var body_dict = {}
-	if not body_str.is_empty():
-		var json = JSON.new()
-		var parse_err = json.parse(body_str)
-		if parse_err == OK:
-			body_dict = json.data
-	
-	# Обрабатываем запрос
-	var response_body = ""
-	var status_code = 200
-	
-	match path:
-		"/execute":
-			if method == "POST" and body_dict.has("code"):
-				response_body = _execute_code(body_dict["code"])
-			else:
-				status_code = 400
-				response_body = '{"error": "Invalid request"}'
-		"/create_file":
-			if method == "POST" and body_dict.has("path") and body_dict.has("content"):
-				response_body = _create_file(body_dict["path"], body_dict["content"])
-			else:
-				status_code = 400
-				response_body = '{"error": "Invalid request"}'
-		"/health":
-			response_body = '{"status": "ok", "running": true}'
-		_:
-			status_code = 404
-			response_body = '{"error": "Not found"}'
-	
-	# Отправляем ответ
-	var response = "HTTP/1.1 %d OK\r\n" % status_code
-	response += "Content-Type: application/json\r\n"
-	response += "Content-Length: %d\r\n" % response_body.length()
-	response += "Access-Control-Allow-Origin: *\r\n"
-	response += "Connection: close\r\n"
-	response += "\r\n"
-	response += response_body
-	
-	var response_bytes = response.to_utf8_buffer()
-	client.put_data(response_bytes)
-	client.disconnect_from_host()
+# Принимаем новые подключения
+while tcp_server.is_connection_available():
+var peer := tcp_server.take_connection()
+if peer != null:
+_clients.append({"peer": peer, "buf": PackedByteArray(), "deadline": Time.get_ticks_msec() + 5000})
 
-func _execute_code(code: String) -> String:
-	if editor_interface == null:
-		return '{"error": "EditorInterface not available", "status": "error"}'
-	
-	var output = ""
-	var success = true
-	
-	# Создаём временный скрипт для выполнения
-	var script = EditorScript.new()
-	script.source_code = code
-	
-	# Пытаемся выполнить код
-	var base_script = GDScript.new()
-	base_script.source_code = code
-	
-	var err = base_script.reload()
-	if err != OK:
-		output = "Script compilation error: %s" % error_string(err)
-		success = false
-	else:
-		# Пробуем создать экземпляр и вызвать _ready если есть
-		var instance = base_script.new()
-		if instance and instance.has_method("_run"):
-			var result = instance._run()
-			if result != null:
-				output = str(result)
-		else:
-			output = "Code executed successfully (no _run method found)"
-		instance.free()
-	
-	return '{"status": "%s", "output": "%s"}' % ["ok" if success else "error", _escape_json(output)]
+# Читаем из существующих клиентов
+var still_alive: Array[Dictionary] = []
+for c in _clients:
+var peer: StreamPeerTCP = c["peer"]
+peer.poll()
+var status: int = peer.get_status()
 
-func _create_file(file_path: String, content: String) -> String:
-	var full_path = file_path if file_path.begins_with("res://") else "res://" + file_path
-	
-	# Создаём директорию если нужно
-	var dir = DirAccess.open("res://")
-	if dir == null:
-		return '{"error": "Cannot open res:// directory", "status": "error"}'
-	
-	var path_parts = full_path.split("/")
-	if path_parts.size() > 2:
-		var dir_path = "/".join(path_parts.slice(0, path_parts.size() - 1))
-		dir.make_dir_recursive(dir_path.replace("res://", ""))
-	
-	# Записываем файл
-	var file = FileAccess.open(full_path, FileAccess.WRITE)
-	if file == null:
-		return '{"error": "Cannot create file: %s", "status": "error"}' % full_path
-	
-	file.store_string(content)
-	file.close()
-	
-	# Обновляем файловую систему
-	EditorInterface.get_resource_filesystem().scan()
-	
-	return '{"status": "ok", "path": "%s"}' % full_path
+if status != StreamPeerTCP.STATUS_CONNECTED:
+if status == StreamPeerTCP.STATUS_ERROR or status == StreamPeerTCP.STATUS_NONE:
+continue
 
-func _escape_json(text: String) -> String:
-	text = text.replace("\\", "\\\\")
-	text = text.replace("\"", "\\\"")
-	text = text.replace("\n", "\\n")
-	text = text.replace("\r", "\\r")
-	text = text.replace("\t", "\\t")
-	return text
+var avail: int = peer.get_available_bytes()
+if avail > 0:
+var data = peer.get_data(avail)
+if data[0] == OK and data[1].size() > 0:
+var buf: PackedByteArray = c["buf"]
+buf.append_array(data[1])
+c["buf"] = buf
+
+var buf2: PackedByteArray = c["buf"]
+var text: String = buf2.get_string_from_utf8()
+var header_end: int = text.find("\r\n\r\n")
+if header_end != -1:
+_handle_request(peer, text)
+c["buf"] = PackedByteArray()
+continue
+
+if Time.get_ticks_msec() > int(c["deadline"]):
+peer.disconnect_from_host()
+continue
+
+still_alive.append(c)
+
+_clients = still_alive
+
+func _handle_request(peer: StreamPeerTCP, raw: String) -> void:
+var header_end: int = raw.find("\r\n\r\n")
+if header_end == -1:
+return
+
+var head: String = raw.substr(0, header_end)
+var body: String = raw.substr(header_end + 4)
+var lines: PackedStringArray = head.split("\r\n")
+if lines.is_empty():
+_send(peer, 400, {"error": "bad request"})
+return
+
+var request_line: PackedStringArray = lines[0].split(" ")
+if request_line.size() < 2:
+_send(peer, 400, {"error": "bad request line"})
+return
+
+var method: String = request_line[0]
+var path: String = request_line[1]
+
+if method == "GET" and path == "/health":
+_send(peer, 200, {"status": "ok", "port": port})
+return
+
+if method == "POST" and path == "/execute":
+var parsed: Variant = JSON.parse_string(body)
+if typeof(parsed) != TYPE_DICTIONARY:
+_send(peer, 400, {"error": "invalid json"})
+return
+var d: Dictionary = parsed
+var code: String = str(d.get("code", ""))
+var file_path: String = str(d.get("file_path", ""))
+code_received.emit(code, file_path)
+_send(peer, 200, {"status": "queued", "len": code.length()})
+return
+
+_send(peer, 404, {"error": "not found"})
+
+func _send(peer: StreamPeerTCP, code: int, payload: Dictionary) -> void:
+var body: String = JSON.stringify(payload)
+var reason: String = "OK" if code == 200 else ("Bad Request" if code == 400 else "Not Found")
+var resp: String = "HTTP/1.1 %d %s\r\nContent-Type: application/json\r\nContent-Length: %d\r\nConnection: close\r\n\r\n%s" % [code, reason, body.length(), body]
+var bytes: PackedByteArray = resp.to_utf8_buffer()
+peer.put_data(bytes)
+peer.disconnect_from_host()
