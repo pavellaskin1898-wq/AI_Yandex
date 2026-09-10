@@ -1,335 +1,272 @@
-# ===== python_server/main.py =====
 """
-AI Yandex Agent - Python Backend Server
-FastAPI приложение для интеграции с YandexGPT/Alice API
+FastAPI application for AI Yandex Assistant.
+Provides endpoints for authentication, chat, and code generation.
 """
-
-import os
-import re
-import asyncio
-import httpx
-from typing import Optional, Dict, List, Any
+import uvicorn
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
-import uvicorn
+from pydantic import BaseModel
+from typing import Optional, List, Dict, Any
 
-# Импорт локальных модулей
-from yandex_auth import YandexAuthenticator
-from yandex_gpt import YandexGPTClient
-from godot_bridge import GodotBridge
-
-app = FastAPI(title="AI Yandex Agent Backend", version="1.0.0")
-
-# CORS для локального доступа
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+from yandex_auth import YandexAuthenticator, YandexAuthResult
+from yandex_gpt import (
+    YandexGPTClient, 
+    YandexGPTConfig, 
+    Message, 
+    extract_all_code_blocks
 )
+from godot_bridge import GodotBridge, GodotBridgeConfig
 
-# Глобальные клиенты
-authenticator = YandexAuthenticator()
-gpt_client: Optional[YandexGPTClient] = None
-godot_bridge = GodotBridge()
 
+# ============== Pydantic Models ==============
 
 class LoginRequest(BaseModel):
-    email: str = Field(..., description="Yandex email")
-    password: str = Field(..., description="Yandex password")
+    login: str
+    password: str
 
 
 class LoginResponse(BaseModel):
     success: bool
-    email: Optional[str] = None
-    oauth_token: Optional[str] = None
+    email: str = ""
+    oauth_token: str = ""
     iam_token: Optional[str] = None
     error: Optional[str] = None
 
 
 class ChatRequest(BaseModel):
-    prompt: str = Field(..., description="User prompt")
-    context: Dict[str, Any] = Field(default_factory=dict, description="Additional context")
-    token: Optional[str] = Field(None, description="OAuth token")
+    prompt: str
+    context: Optional[Dict[str, Any]] = None
+    token: Optional[str] = None  # OAuth token from login
 
 
 class ChatResponse(BaseModel):
     success: bool
-    text: Optional[str] = None
-    code: Optional[str] = None
-    tokens_used: Optional[int] = None
+    response: str = ""
+    code_blocks: Dict[str, str] = {}
     error: Optional[str] = None
 
 
 class GenerateGameRequest(BaseModel):
-    task: str = Field(..., description="Game development task")
-    token: Optional[str] = Field(None, description="OAuth token")
-
-
-class FileInfo(BaseModel):
-    path: str
-    content: str
+    description: str
+    token: Optional[str] = None
 
 
 class GenerateGameResponse(BaseModel):
     success: bool
-    files: List[FileInfo] = []
+    files: Dict[str, str] = {}
+    plan: str = ""
     error: Optional[str] = None
 
 
-@app.on_event("startup")
-async def startup_event():
-    """Инициализация при запуске"""
-    print("[AI Yandex] Backend server starting...")
-    godot_bridge.set_godot_port(int(os.getenv("GODOT_PORT", "9876")))
+# ============== Application ==============
+
+app = FastAPI(
+    title="AI Yandex Assistant Backend",
+    description="Backend service for Godot AI Yandex plugin",
+    version="1.0.0"
+)
+
+# CORS middleware for localhost communication
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Only localhost in production
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Global state (in production, use proper session management)
+_sessions: Dict[str, Dict[str, Any]] = {}
+
+
+@app.get("/health")
+async def health_check():
+    """Health check endpoint."""
+    return {"status": "ok"}
 
 
 @app.post("/login", response_model=LoginResponse)
 async def login(request: LoginRequest):
     """
-    Авторизация в Яндексе по логину/паролю
-    Возвращает OAuth и IAM токены для последующих запросов
-    """
-    try:
-        result = await authenticator.login_with_password(request.email, request.password)
-        
-        if not result.get("success"):
-            return LoginResponse(
-                success=False,
-                error=result.get("error", "Authentication failed")
-            )
-        
-        oauth_token = result.get("oauth_token", "")
-        iam_token = result.get("iam_token", "")
-        
-        # Инициализируем GPT клиент с токенами
-        global gpt_client
-        gpt_client = YandexGPTClient(iam_token)
-        
-        return LoginResponse(
-            success=True,
-            email=request.email,
-            oauth_token=oauth_token,
-            iam_token=iam_token
-        )
+    Authenticate with Yandex Passport.
     
-    except Exception as e:
+    Returns OAuth and IAM tokens for subsequent API calls.
+    """
+    auth = YandexAuthenticator()
+    result: YandexAuthResult = await auth.login(request.login, request.password)
+    
+    if result.error:
         return LoginResponse(
             success=False,
-            error=str(e)
+            email=request.login,
+            error=result.error
         )
+    
+    # Store session (simplified - in production use proper session mgmt)
+    session_id = result.oauth_token[:16]  # Use token prefix as session ID
+    _sessions[session_id] = {
+        "email": result.email,
+        "oauth_token": result.oauth_token,
+        "iam_token": result.iam_token,
+    }
+    
+    return LoginResponse(
+        success=True,
+        email=result.email,
+        oauth_token=result.oauth_token,
+        iam_token=result.iam_token
+    )
 
 
 @app.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest):
     """
-    Отправка запроса к YandexGPT
-    Возвращает текстовый ответ и опционально извлечённый код
+    Send a message to YandexGPT and get a response.
+    
+    If the response contains GDScript code blocks, they are extracted
+    and returned separately for easy integration with Godot.
     """
-    if not gpt_client:
-        raise HTTPException(status_code=401, detail="Not authenticated. Call /login first.")
-    
-    try:
-        model = request.context.get("model", "yandexgpt-lite")
-        temperature = request.context.get("temperature", 0.7)
-        max_tokens = request.context.get("max_tokens", 2000)
-        
-        # Формируем системный промт для генерации GDScript кода
-        system_prompt = """Ты — опытный разработчик Godot Engine 4.6.
-Твоя задача — помогать создавать игры на GDScript 2.0.
-Отвечай на русском языке.
-Если нужно написать код, используй блоки ```gdscript ... ```.
-Код должен быть совместим с Godot 4.6.3.stable.official.
-Используй современный синтаксис GDScript 2.0: @export, @onready, typed variables, await, Callable."""
-
-        response = await gpt_client.completion(
-            prompt=request.prompt,
-            system_prompt=system_prompt,
-            model=model,
-            temperature=temperature,
-            max_tokens=max_tokens
-        )
-        
-        text = response.get("text", "")
-        tokens_used = response.get("tokens_used", 0)
-        
-        # Извлекаем код из markdown блоков
-        code = extract_code_from_response(text)
-        
-        return ChatResponse(
-            success=True,
-            text=text,
-            code=code,
-            tokens_used=tokens_used
-        )
-    
-    except Exception as e:
+    if not request.token:
         return ChatResponse(
             success=False,
-            error=str(e)
+            error="Authentication required. Please login first."
         )
+    
+    # Get IAM token from session or use provided token directly
+    iam_token = request.token
+    session_id = request.token[:16] if len(request.token) > 16 else ""
+    if session_id in _sessions:
+        iam_token = _sessions[session_id].get("iam_token") or request.token
+    
+    if not iam_token:
+        return ChatResponse(
+            success=False,
+            error="Invalid or expired token. Please login again."
+        )
+    
+    # Initialize GPT client
+    config = YandexGPTConfig(
+        model="yandexgpt-lite",
+        temperature=0.6,
+        max_tokens=2000
+    )
+    client = YandexGPTClient(iam_token=iam_token, config=config)
+    
+    # Build messages
+    messages = [Message(role="user", text=request.prompt)]
+    
+    # Add context if provided
+    if request.context:
+        context_text = "\n".join(f"{k}: {v}" for k, v in request.context.items())
+        messages.insert(0, Message(role="system", text=f"Context:\n{context_text}"))
+    
+    # Get completion
+    system_prompt = client.get_system_prompt_for_godot()
+    result = await client.complete(messages, system_prompt=system_prompt)
+    
+    if result.error:
+        return ChatResponse(
+            success=False,
+            error=result.error
+        )
+    
+    # Extract code blocks
+    code_blocks = extract_all_code_blocks(result.text)
+    
+    # If code was generated, send it to Godot
+    if code_blocks:
+        bridge = GodotBridge()
+        for file_path, code in code_blocks.items():
+            await bridge.execute_code(code, file_path)
+    
+    return ChatResponse(
+        success=True,
+        response=result.text,
+        code_blocks=code_blocks
+    )
 
 
 @app.post("/generate_game", response_model=GenerateGameResponse)
 async def generate_game(request: GenerateGameRequest):
     """
-    Генерация полноценной игры по описанию задачи
-    Возвращает список файлов с кодом и сценами
+    Generate a complete game based on a description.
+    
+    This is a high-level endpoint that:
+    1. Creates a development plan
+    2. Generates all necessary scripts and scenes
+    3. Sends them to Godot for creation
     """
-    if not gpt_client:
-        raise HTTPException(status_code=401, detail="Not authenticated. Call /login first.")
-    
-    try:
-        # Системный промт для генерации структуры проекта
-        system_prompt = """Ты — senior Godot разработчик.
-Создай полноценную игру по заданию пользователя.
-Верни ответ в формате JSON со списком файлов:
-{
-    "files": [
-        {"path": "res://game/main.gd", "content": "..."},
-        {"path": "res://game/player.gd", "content": "..."}
-    ]
-}
-Используй только GDScript 2.0 для Godot 4.6.3.
-Включи все необходимые скрипты и описание сцен."""
-
-        response = await gpt_client.completion(
-            prompt=f"Создай игру: {request.task}",
-            system_prompt=system_prompt,
-            model="yandexgpt",
-            temperature=0.7,
-            max_tokens=4000
-        )
-        
-        text = response.get("text", "")
-        
-        # Парсим JSON ответ или извлекаем файлы из текста
-        files = parse_files_from_response(text)
-        
-        if not files:
-            # Если не удалось распарсить, создаём базовую структуру
-            files = create_basic_game_structure(request.task)
-        
-        # Отправляем файлы в Godot для создания
-        for file_info in files:
-            await godot_bridge.create_file(file_info["path"], file_info["content"])
-        
-        return GenerateGameResponse(
-            success=True,
-            files=[FileInfo(**f) for f in files]
-        )
-    
-    except Exception as e:
+    if not request.token:
         return GenerateGameResponse(
             success=False,
-            error=str(e)
+            error="Authentication required. Please login first."
         )
+    
+    # Get IAM token
+    iam_token = request.token
+    session_id = request.token[:16] if len(request.token) > 16 else ""
+    if session_id in _sessions:
+        iam_token = _sessions[session_id].get("iam_token") or request.token
+    
+    if not iam_token:
+        return GenerateGameResponse(
+            success=False,
+            error="Invalid or expired token. Please login again."
+        )
+    
+    config = YandexGPTConfig(
+        model="yandexgpt-lite",
+        temperature=0.7,
+        max_tokens=4000
+    )
+    client = YandexGPTClient(iam_token=iam_token, config=config)
+    
+    # Enhanced system prompt for game generation
+    system_prompt = """You are an expert Godot 4.6 game developer.
+Generate a COMPLETE, playable game based on the user's description.
 
+Requirements:
+1. First, provide a brief development plan
+2. Then generate ALL necessary files with full code
+3. Include: player controller, enemies, UI, game manager, etc.
+4. Use proper Godot 4.6 GDScript 2.0 syntax
+5. Mark each file clearly: ```gdscript path/to/file.gd ... ```
 
-@app.get("/health")
-async def health_check():
-    """Проверка работоспособности сервера"""
-    return {
-        "status": "ok",
-        "authenticated": gpt_client is not None,
-        "godot_connected": await godot_bridge.check_connection()
-    }
+The game should be immediately playable after importing all files."""
 
-
-def extract_code_from_response(text: str) -> Optional[str]:
-    """Извлечение GDScript кода из markdown блоков"""
-    patterns = [
-        r'```gdscript\s*(.*?)\s*```',
-        r'```gd\s*(.*?)\s*```',
-        r'```\s*(.*?)\s*```'
+    messages = [
+        Message(role="system", text=system_prompt),
+        Message(role="user", text=f"Create a game: {request.description}")
     ]
     
-    for pattern in patterns:
-        match = re.search(pattern, text, re.DOTALL)
-        if match:
-            code = match.group(1).strip()
-            # Проверяем, что это действительно GDScript
-            if any(keyword in code for keyword in ['extends', 'func ', '@export', '@onready', 'var ']):
-                return code
+    result = await client.complete(messages)
     
-    return None
-
-
-def parse_files_from_response(text: str) -> List[Dict[str, str]]:
-    """Парсинг JSON ответа со списком файлов"""
-    import json
+    if result.error:
+        return GenerateGameResponse(
+            success=False,
+            error=result.error
+        )
     
-    try:
-        # Пытаемся найти JSON в тексте
-        json_match = re.search(r'\{.*"files".*\}', text, re.DOTALL)
-        if json_match:
-            data = json.loads(json_match.group())
-            return data.get("files", [])
-    except:
-        pass
+    # Extract all code blocks
+    files = extract_all_code_blocks(result.text)
     
-    return []
-
-
-def create_basic_game_structure(task: str) -> List[Dict[str, str]]:
-    """Создание базовой структуры игры по заданию"""
-    return [
-        {
-            "path": "res://game/main.gd",
-            "content": """extends Node2D
-
-@onready var player: CharacterBody2D = $Player
-@onready var score_label: Label = $UI/ScoreLabel
-
-var score: int = 0
-
-func _ready():
-    print("Game started!")
-    update_score()
-
-func add_score(points: int):
-    score += points
-    update_score()
-
-func update_score():
-    if score_label:
-        score_label.text = "Score: %d" % score
-"""
-        },
-        {
-            "path": "res://game/player.gd",
-            "content": """extends CharacterBody2D
-
-@export var speed: float = 300.0
-@export var jump_velocity: float = -400.0
-
-var gravity: float = ProjectSettings.get_setting("physics/2d/default_gravity")
-
-func _physics_process(delta: float) -> void:
-    # Добавляем гравитацию
-    if not is_on_floor():
-        velocity.y += gravity * delta
+    # Send each file to Godot
+    if files:
+        bridge = GodotBridge()
+        for file_path, content in files.items():
+            await bridge.execute_code(content, file_path)
     
-    # Обработка прыжка
-    if Input.is_action_just_pressed("ui_accept") and is_on_floor():
-        velocity.y = jump_velocity
-    
-    # Обработка движения
-    var direction: float = Input.get_axis("ui_left", "ui_right")
-    if direction:
-        velocity.x = direction * speed
-    else:
-        velocity.x = move_toward(velocity.x, 0, speed)
-    
-    move_and_slide()
-"""
-        }
-    ]
+    return GenerateGameResponse(
+        success=True,
+        files=files,
+        plan="Game files generated successfully"
+    )
 
 
 if __name__ == "__main__":
-    port = int(os.getenv("PORT", "8000"))
-    print(f"[AI Yandex] Starting server on http://127.0.0.1:{port}")
-    uvicorn.run(app, host="127.0.0.1", port=port)
+    uvicorn.run(
+        "main:app",
+        host="127.0.0.1",
+        port=8000,
+        reload=True
+    )

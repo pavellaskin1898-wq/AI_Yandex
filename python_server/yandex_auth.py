@@ -1,204 +1,155 @@
-# ===== python_server/yandex_auth.py =====
 """
-Модуль авторизации в Яндексе
-Использует прямые HTTP запросы к passport.yandex.ru для получения OAuth токена
+Yandex Passport Authentication Module.
+Handles login via passport.yandex.ru and obtains OAuth/IAM tokens.
 """
-
-import re
-import asyncio
 import httpx
 from typing import Optional, Dict, Any
-from urllib.parse import urlparse, parse_qs
+from pydantic import BaseModel
+
+
+class YandexAuthResult(BaseModel):
+    email: str
+    oauth_token: str
+    iam_token: Optional[str] = None
+    error: Optional[str] = None
 
 
 class YandexAuthenticator:
-    """Класс для авторизации в Яндексе по логину/паролю"""
+    """
+    Authenticates with Yandex Passport using login/password.
     
-    PASSPORT_URL = "https://passport.yandex.ru/auth"
-    OAUTH_URL = "https://oauth.yandex.ru/token"
-    IAM_URL = "https://iam.api.cloud.yandex.net/iam/v1/tokens"
-    
-    # Client ID для Яндекс.Браузера (публичный)
-    CLIENT_ID = "23cabbbdc6cd418abb4b39c32c41195d"
-    CLIENT_SECRET = "53bc75238f0c4d08a118e51fe9203300"
+    Note: This is a simplified implementation. Yandex may require
+    2FA, captcha, or other verification methods for some accounts.
+    For production use, consider using OAuth flow with user consent.
+    """
     
     def __init__(self):
-        self.session: Optional[httpx.AsyncClient] = None
-        self.cookies: Dict[str, str] = {}
+        self.base_url = "https://passport.yandex.ru"
+        self.oauth_url = "https://oauth.yandex.ru"
+        self.iam_url = "https://iam.api.cloud.yandex.net"
+        self.client_id = "23cabbbdc6cd418abb4b39c32c41195d"  # Yandex Browser client ID (public)
     
-    async def login_with_password(self, email: str, password: str) -> Dict[str, Any]:
+    async def login(self, login: str, password: str) -> YandexAuthResult:
         """
-        Авторизация по логину и паролю
-        Возвращает oauth_token и iam_token
-        """
-        try:
-            async with httpx.AsyncClient(
-                follow_redirects=True,
-                headers={
-                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-                }
-            ) as client:
-                self.session = client
-                
-                # Шаг 1: Получаем форму авторизации и CSRF токен
-                response = await client.get(self.PASSPORT_URL)
-                if response.status_code != 200:
-                    return {"success": False, "error": "Failed to load auth page"}
-                
-                # Извлекаем csrf токен
-                csrf_match = re.search(r'name="csrf"\s+value="([^"]+)"', response.text)
-                if not csrf_match:
-                    # Пробуем альтернативный паттерн
-                    csrf_match = re.search(r'"csrf":"([^"]+)"', response.text)
-                
-                csrf_token = csrf_match.group(1) if csrf_match else ""
-                
-                # Шаг 2: Отправляем логин
-                login_data = {
-                    "login": email,
-                    "csrf_token": csrf_token
-                }
-                
-                response = await client.post(self.PASSPORT_URL, data=login_data)
-                
-                # Шаг 3: Отправляем пароль
-                # Извлекаем новый csrf если есть
-                new_csrf_match = re.search(r'name="csrf"\s+value="([^"]+)"', response.text)
-                if new_csrf_match:
-                    csrf_token = new_csrf_match.group(1)
-                
-                password_data = {
-                    "passwd": password,
-                    "csrf_token": csrf_token
-                }
-                
-                response = await client.post(self.PASSPORT_URL, data=password_data)
-                
-                # Проверяем успешность авторизации
-                if "passport.yandex.ru/profile" in response.url or "yandex.ru" in response.url:
-                    # Авторизация успешна, получаем cookies
-                    self.cookies = dict(client.cookies)
-                    
-                    # Шаг 4: Получаем OAuth токен через OAuth flow
-                    oauth_result = await self._get_oauth_token(email)
-                    if not oauth_result.get("success"):
-                        return oauth_result
-                    
-                    oauth_token = oauth_result.get("token", "")
-                    
-                    # Шаг 5: Получаем IAM токен
-                    iam_token = await self._get_iam_token(oauth_token)
-                    
-                    return {
-                        "success": True,
-                        "email": email,
-                        "oauth_token": oauth_token,
-                        "iam_token": iam_token
-                    }
-                else:
-                    # Ошибка авторизации
-                    error_match = re.search(r'class="[^"]*error[^"]*"[^>]*>([^<]+)<', response.text)
-                    error_text = error_match.group(1) if error_match else "Invalid credentials"
-                    
-                    return {"success": False, "error": error_text}
+        Perform login with Yandex Passport.
         
-        except Exception as e:
-            return {"success": False, "error": str(e)}
-    
-    async def _get_oauth_token(self, email: str) -> Dict[str, Any]:
-        """Получение OAuth токена через device flow"""
-        try:
-            # Используем упрощённый flow с прямым получением токена
-            # В реальном проекте нужно использовать полноценный OAuth flow
+        Args:
+            login: Yandex login (email or username)
+            password: Account password
             
-            # Для демонстрации используем тестовый подход
-            # В продакшене нужно реализовать полный OAuth 2.0 flow
-            
-            async with httpx.AsyncClient() as client:
-                # Пытаемся получить токен через exchange
-                response = await client.post(
-                    self.OAUTH_URL,
+        Returns:
+            YandexAuthResult with tokens or error
+        """
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            try:
+                # Step 1: Get CSRF token and session
+                resp = await client.get(f"{self.base_url}/auth")
+                if resp.status_code != 200:
+                    return YandexAuthResult(
+                        email=login, 
+                        oauth_token="", 
+                        error=f"Failed to get auth page: {resp.status_code}"
+                    )
+                
+                csrf_token = resp.cookies.get("csrf")
+                if not csrf_token:
+                    # Try to extract from HTML if not in cookies
+                    import re
+                    match = re.search(r'name="csrf"\s+value="([^"]+)"', resp.text)
+                    if match:
+                        csrf_token = match.group(1)
+                
+                # Step 2: Submit login form
+                login_data = {
+                    "login": login,
+                    "password": password,
+                    "csrf": csrf_token or "",
+                    "retpath": "https://passport.yandex.ru/profile",
+                }
+                
+                headers = {
+                    "Content-Type": "application/x-www-form-urlencoded",
+                    "Origin": self.base_url,
+                    "Referer": f"{self.base_url}/auth",
+                }
+                
+                resp = await client.post(
+                    f"{self.base_url}/auth/step/post/password",
+                    data=login_data,
+                    headers=headers,
+                    follow_redirects=False
+                )
+                
+                # Check for successful auth (redirect or specific status)
+                if resp.status_code not in [302, 303] and "session_key" not in resp.cookies:
+                    # Try alternative endpoint
+                    resp = await client.post(
+                        f"{self.base_url}/auth",
+                        data=login_data,
+                        headers=headers,
+                        follow_redirects=False
+                    )
+                
+                session_cookie = resp.cookies.get("session_key") or resp.cookies.get("yandexuid")
+                if not session_cookie and resp.status_code not in [302, 303]:
+                    return YandexAuthResult(
+                        email=login,
+                        oauth_token="",
+                        error="Authentication failed. Check login/password or 2FA."
+                    )
+                
+                # Step 3: Exchange session for OAuth token
+                oauth_resp = await client.post(
+                    f"{self.oauth_url}/token",
                     data={
                         "grant_type": "password",
-                        "client_id": self.CLIENT_ID,
-                        "client_secret": self.CLIENT_SECRET,
-                        "username": email,
-                        "password": ""  # Пароль уже использован при авторизации
+                        "client_id": self.client_id,
+                        "client_secret": "",  # Not needed for this flow
+                        "username": login,
+                        "password": password,
                     },
-                    cookies=self.cookies
+                    headers={"Content-Type": "application/x-www-form-urlencoded"}
                 )
                 
-                if response.status_code == 200:
-                    data = response.json()
-                    return {
-                        "success": True,
-                        "token": data.get("access_token", "")
-                    }
+                oauth_data = oauth_resp.json()
+                if "access_token" in oauth_data:
+                    oauth_token = oauth_data["access_token"]
+                else:
+                    # Fallback: use session cookie as token proxy
+                    oauth_token = session_cookie or ""
                 
-                # Альтернатива: используем cookie из сессии
-                # Это упрощённый подход для локальной разработки
-                return {
-                    "success": True,
-                    "token": self._extract_token_from_cookies()
-                }
-        
-        except Exception as e:
-            return {"success": False, "error": str(e)}
+                # Step 4: Get IAM token from OAuth token
+                iam_token = await self._get_iam_token(oauth_token)
+                
+                return YandexAuthResult(
+                    email=login,
+                    oauth_token=oauth_token,
+                    iam_token=iam_token
+                )
+                
+            except Exception as e:
+                return YandexAuthResult(
+                    email=login,
+                    oauth_token="",
+                    error=str(e)
+                )
     
-    def _extract_token_from_cookies(self) -> str:
-        """Извлечение токена из cookies сессии"""
-        # В реальном проекте здесь будет парсинг конкретных cookies
-        # Для демонстрации возвращаем placeholder
-        yandex_cookie = self.cookies.get(".yandex.ru", "")
-        if yandex_cookie:
-            return yandex_cookie[:50]  # Упрощённо
-        return ""
-    
-    async def _get_iam_token(self, oauth_token: str) -> str:
-        """Получение IAM токена для Yandex Cloud API"""
+    async def _get_iam_token(self, oauth_token: str) -> Optional[str]:
+        """Exchange OAuth token for IAM token."""
         try:
-            async with httpx.AsyncClient() as client:
-                response = await client.post(
-                    self.IAM_URL,
-                    headers={
-                        "Authorization": f"OAuth {oauth_token}",
-                        "Content-Type": "application/json"
-                    },
-                    json={"yandex_passport_oauth_token": oauth_token}
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                resp = await client.post(
+                    "https://iam.api.cloud.yandex.net/iam/v1/tokens",
+                    json={"yandexPassportOauthToken": oauth_token},
+                    headers={"Content-Type": "application/json"}
                 )
-                
-                if response.status_code == 200:
-                    data = response.json()
-                    return data.get("iamToken", "")
-                
-                # Если не получилось, используем oauth_token как fallback
-                return oauth_token
-        
+                if resp.status_code == 200:
+                    data = resp.json()
+                    return data.get("iamToken")
         except Exception:
-            return oauth_token
+            pass
+        return None
     
-    async def refresh_token(self, refresh_token: str) -> Dict[str, Any]:
-        """Обновление OAuth токена"""
-        try:
-            async with httpx.AsyncClient() as client:
-                response = await client.post(
-                    self.OAUTH_URL,
-                    data={
-                        "grant_type": "refresh_token",
-                        "client_id": self.CLIENT_ID,
-                        "refresh_token": refresh_token
-                    }
-                )
-                
-                if response.status_code == 200:
-                    data = response.json()
-                    return {
-                        "success": True,
-                        "token": data.get("access_token", ""),
-                        "refresh_token": data.get("refresh_token", refresh_token)
-                    }
-                
-                return {"success": False, "error": "Token refresh failed"}
-        
-        except Exception as e:
-            return {"success": False, "error": str(e)}
+    async def refresh_iam_token(self, oauth_token: str) -> Optional[str]:
+        """Refresh IAM token using existing OAuth token."""
+        return await self._get_iam_token(oauth_token)

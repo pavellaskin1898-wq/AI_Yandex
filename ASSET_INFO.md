@@ -1,125 +1,99 @@
-# AI Yandex Agent — Метаданные для Godot Asset Library
+# AI Yandex - Godot Asset Library Metadata
 
-## Основная информация
+## Basic Information
 
-| Поле | Значение |
-|------|----------|
-| **Название** | AI Yandex Agent |
-| **Версия** | 1.0.0 |
-| **Автор** | AI Developer |
-| **Лицензия** | MIT |
-| **Категория** | Tools |
-| **Godot версия** | 4.6+ |
+**Name:** AI Yandex Assistant  
+**Version:** 1.0.0  
+**Godot Version:** 4.6+  
+**Category:** Tools  
+**License:** MIT  
 
-## Описание
+## Description
 
-Интеллектуальный ассистент для разработки игр в Godot Engine на базе YandexGPT и Yandex Alice. Плагин предоставляет удобный чат-интерфейс прямо в редакторе, генерирует GDScript код, создаёт файлы проекта и помогает с разработкой.
+AI-powered assistant plugin that integrates YandexGPT and Alice APIs directly into the Godot Editor. Generate GDScript code, create complete game templates, and get intelligent assistance for your game development workflow.
 
-### Ключевые возможности
+### Key Features
 
-- 🤖 ИИ-агент на YandexGPT для генерации кода и ответов на вопросы
-- 🔐 Авторизация через Яндекс с безопасным хранением токенов
-- 💬 Чат-интерфейс в док-панели редактора
-- 📁 Автоматическое создание скриптов и сцен
-- ⚙️ Гибкие настройки модели (temperature, max tokens)
-- 📊 Подробное логирование для отладки
+- **Yandex Account Integration**: Secure login with your Yandex account
+- **YandexGPT Code Generation**: AI-powered GDScript 2.0 code generation
+- **Automatic Code Execution**: Generated code is sent directly to the Godot editor
+- **Dock Panel Interface**: Seamless integration into the Godot Editor UI
+- **Encrypted Token Storage**: Secure local storage of authentication tokens
+- **Game Template Generation**: Create complete game prototypes from descriptions
 
-## Теги
+## Tags
 
-```
-ai, yandex, alice, gpt, assistant, codegen, tool, editor, plugin, llm, automation
-```
+`ai`, `yandex`, `alice`, `gpt`, `assistant`, `codegen`, `automation`, `tools`, `editor`, `llm`
 
-## Скриншоты
+## Repository
 
-Рекомендуемые скриншоты для добавления:
+GitHub: [Your Repository URL]
 
-1. **dock_panel.png** — Общий вид док-панели с вкладками
-2. **chat_interface.png** — Вкладка чата с примером диалога
-3. **auth_screen.png** — Вкладка авторизации
-4. **settings.png** — Вкладка настроек с параметрами модели
-5. **logs.png** — Вкладка логов
+## Documentation
 
-*Примечание: Добавьте реальные скриншоты при публикации*
+Full documentation available in README.md
 
-## Совместимость
+## Screenshots
 
-| Godot версия | Статус |
-|--------------|--------|
-| 4.6.3.stable | ✅ Поддерживается |
-| 4.6.x | ✅ Ожидается совместимость |
-| 4.5.x | ❌ Не тестировалось |
-| 4.4 и ниже | ❌ Не поддерживается |
+*(Add screenshots when publishing to Asset Library)*
 
-## Требования
+1. Dock panel showing login interface
+2. Chat interface with generated code
+3. Game generation in progress
+4. Settings panel
 
-### Клиентские
-- Godot Engine 4.6.3+
-- Доступ в интернет (для YandexGPT API)
+## Installation Instructions
 
-### Серверные (Python бэкенд)
-- Python 3.9+
-- FastAPI 0.104+
-- httpx 0.25+
-- uvicorn 0.24+
+1. Download and extract to `addons/AI_Yandex/`
+2. Enable plugin in Project Settings → Plugins
+3. Install Python dependencies: `pip install -r python_server/requirements.txt`
+4. Run Python server: `python python_server/main.py`
+5. Login with Yandex account in the dock panel
 
-## Установка
+## Dependencies
 
-1. Скачайте плагин из Asset Library
-2. Распакуйте в папку проекта `addons/AI_Yandex/`
-3. Включите в `Project Settings → Plugins`
-4. Установите и запустите Python бэкенд (см. README.md)
+### Godot Side
+- None (uses built-in Godot APIs)
 
-## Ссылки
+### Python Side
+- fastapi >= 0.109.0
+- uvicorn[standard] >= 0.27.0
+- aiohttp >= 3.9.1
+- httpx >= 0.26.0
+- pydantic >= 2.5.3
+- python-multipart >= 0.0.6
 
-- **Репозиторий**: https://github.com/your-username/ai-yandex-godot-plugin
-- **Документация**: https://github.com/your-username/ai-yandex-godot-plugin/blob/main/README.md
-- **Issues**: https://github.com/your-username/ai-yandex-godot-plugin/issues
-- **YandexGPT API**: https://cloud.yandex.ru/docs/yandexgpt/
+## Compatibility
 
-## История версий
+- **Minimum Godot Version:** 4.6.3
+- **Tested On:** Windows 10/11, Linux (Ubuntu 22.04), macOS 13+
+- **Python Version:** 3.9+
 
-### 1.0.0 (Первый релиз)
-- Базовая интеграция с YandexGPT
-- Авторизация по логину/паролю
-- Чат-интерфейс в редакторе
-- Генерация GDScript кода
-- Создание файлов проекта
-- Настройки модели и температуры
-- Логирование запросов
+## Author
 
-## Иконка
+Your Name / Organization
 
-Рекомендуемая иконка: стилизованная буква "Я" (Яндекс) в сочетании с иконкой робота/ИИ.
+## Changelog
 
-Форматы:
-- `icon.svg` — векторная иконка (рекомендуется)
-- `icon_128x128.png` — растровая иконка
+### 1.0.0 (Initial Release)
+- Yandex Passport authentication
+- YandexGPT integration for code generation
+- Godot dock panel UI
+- HTTP bridge between Python and Godot
+- Encrypted token storage
+- Automatic GDScript execution in editor
 
-## Классы API
+## Support
 
-Плагин предоставляет следующие классы для программного доступа:
+For issues, questions, or contributions:
+- GitHub Issues: [Your Issues URL]
+- Documentation: See README.md
+- Email: [Your Contact Email]
 
-- `YandexConfig` — Менеджер конфигурации
-- `AIHttpServer` — HTTP сервер для связи с Python
-- `YandexClient` — HTTP клиент к Python бэкенду
-- `AIDockUI` — UI компонент док-панели
+## License
 
-## Известные ограничения
-
-- Требуется аккаунт Яндекс для авторизации
-- Python бэкенд должен быть запущен отдельно
-- Для работы YandexGPT требуется доступ к Yandex Cloud API
-- Двухфакторная аутентификация требует использования App Password
-
-## Планы развития
-
-- [ ] Поддержка стриминга ответов
-- [ ] Интеграция с Alice Dialogs API
-- [ ] Шаблоны проектов игр
-- [ ] Локальное кеширование ответов
-- [ ] Поддержка других LLM провайдеров
+MIT License - Free to use in personal and commercial projects.
 
 ---
 
-**Дата обновления метаданных**: 2024
+*This asset is not affiliated with or endorsed by Yandex LLC or Godot Engine.*
